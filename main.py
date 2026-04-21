@@ -36,3 +36,15 @@ def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
     db.delete(transaction)
     db.commit()
     return {"message": f"Transaction {transaction_id} deleted"}
+
+@app.put("/update/{transaction_id}")
+def update_transaction(transaction_id: int, amount: float = None, category: str = None, db: Session = Depends(get_db)):
+    transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not transaction:
+        return {"error": "Transaction is not found"}
+    if amount:
+        transaction.amount = amount
+    if category:
+        transaction.category = category
+    db.commit()
+    return {"message": "Updated", "id": transaction_id, "amount": transaction.amount, "category": transaction.category}
