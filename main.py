@@ -21,7 +21,7 @@ def add_transaction(amount: float, category: str, db: Session = Depends(get_db))
     transaction = Transaction(amount=amount, category=category)
     db.add(transaction)
     db.commit()
-    return {"message": "Added", "transaction": transaction, "category": category}
+    return {"message": "Added", "category": category, "amount": amount}
 
 @app.get("/list")
 def get_transactions(db: Session = Depends(get_db)):
