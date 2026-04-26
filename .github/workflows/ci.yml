@@ -1,0 +1,103 @@
+# Название workflow — будет видно во вкладке Actions на GitHub
+name: CI
+
+# Когда запускать этот workflow
+on:
+  push:
+    branches: [main, master]  # запуск при пуше в main или master
+  pull_request:
+    branches: [main, master]  # и при создании PR в эти ветки
+
+jobs:
+  # Job 1: проверка качества кода (линтер + форматтер)
+  lint:
+    name: Lint code
+    runs-on: ubuntu-latest  # GitHub поднимет виртуалку с Ubuntu
+
+    steps:
+      # Шаг 1: скачать твой код из репозитория на виртуалку
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Шаг 2: установить Python нужной версии
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"  # поставь свою версию
+
+      # Шаг 3: установить ruff — быстрый линтер для Python
+      - name: Install ruff
+        run: pip install ruff
+
+      # Шаг 4: проверить код линтером
+      - name: Run ruff linter
+        run: ruff check .
+
+      # Шаг 5: проверить форматирование
+      - name: Check formatting
+        run: ruff format --check .
+
+  # Job 2: запуск тестов
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    # Поднимаем PostgreSQL как сервис — нужен для тестов с БД
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        # Health check — workflow подождёт, пока БД будет готова
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"  # кэшируем зависимости — следующие запуски будут быстрее
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Запуск тестов с переменными окружения для подключения к тестовой БД
+      - name: Run pytest
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        run: pytest -v
+
+  # Job 3: проверить, что Docker-образ собирается
+  docker:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    needs: [lint, test]  # запустится, только если lint и test прошли успешно
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false  # пока не пушим в registry, только проверяем сборку
+          tags: finance-api:latest
+          cache-from: type=gha  # кэш слоёв для ускорения
+          cache-to: type=gha,mode=max

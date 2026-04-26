@@ -8,11 +8,13 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
+
 class Transaction(Base):
     __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True)
     amount = Column(Float)
     category = Column(String)
+
 
 Base.metadata.create_all(bind=engine)

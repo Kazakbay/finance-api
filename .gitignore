@@ -1,3 +1,6 @@
 __pycache__/
 *.db
 .env
+.idea/
+.venv/
+venv/
