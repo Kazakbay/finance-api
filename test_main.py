@@ -19,6 +19,7 @@ def override_get_db():
     finally:
         db.close()
 
+
 app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
@@ -32,12 +33,9 @@ def teardown_function():
     Base.metadata.drop_all(bind=engine)
 
 
-def register_and_login(email='test@client.com', password='testpass'):
+def register_and_login(email="test@client.com", password="testpass"):
     client.post("/register", json={"email": email, "password": password})
-    response = client.post(
-        "/login",
-        data = {"username": email, "password": password}
-    )
+    response = client.post("/login", data={"username": email, "password": password})
     return response.json()["access_token"]
 
 
@@ -47,6 +45,7 @@ def auth_headers(token: str) -> dict:
 
 # --- Tests ---
 
+
 def test_home():
     response = client.get("/")
     assert response.status_code == 200
@@ -55,8 +54,7 @@ def test_home():
 
 def test_register():
     response = client.post(
-        "/register",
-        json = {"email": "test@test.com", "password": "testpass"}
+        "/register", json={"email": "test@test.com", "password": "testpass"}
     )
     assert response.status_code == 200
     assert response.json()["email"] == "test@test.com"
@@ -64,10 +62,9 @@ def test_register():
 
 
 def test_register_duplicate_email():
-    client.post("/register", json = {"email": "test@test.com", "password": "testpass"})
+    client.post("/register", json={"email": "test@test.com", "password": "testpass"})
     response = client.post(
-        "/register",
-        json = {"email": "test@test.com", "password": "testpass"}
+        "/register", json={"email": "test@test.com", "password": "testpass"}
     )
     assert response.status_code == 400
 
@@ -75,8 +72,7 @@ def test_register_duplicate_email():
 def test_login():
     client.post("/register", json={"email": "test@test.com", "password": "testpass"})
     response = client.post(
-        "/login",
-        data = {"username": "test@test.com", "password": "testpass"}
+        "/login", data={"username": "test@test.com", "password": "testpass"}
     )
     assert response.status_code == 200
     assert "access_token" in response.json()
@@ -86,9 +82,7 @@ def test_add_transaction():
     token = register_and_login()
     print(f"\nТОКЕН: {token}")
     response = client.post(
-        "/add",
-        json = {"amount": 1000, "category": "food"},
-        headers=auth_headers(token)
+        "/add", json={"amount": 1000, "category": "food"}, headers=auth_headers(token)
     )
     print(f"\nОТВЕТ: {response.json()}")
     assert response.status_code == 200
@@ -97,14 +91,20 @@ def test_add_transaction():
 
 
 def test_add_transaction_unauthorized():
-    response = client.post("/add", json={"amount":1000, "category": "food"})
+    response = client.post("/add", json={"amount": 1000, "category": "food"})
     assert response.status_code == 401
 
 
 def test_list_transactions():
     token = register_and_login()
-    client.post("/add", json={"amount": 1000, "category": "food"}, headers=auth_headers(token))
-    client.post("/add", json={"amount": 500, "category": "transport"}, headers=auth_headers(token))
+    client.post(
+        "/add", json={"amount": 1000, "category": "food"}, headers=auth_headers(token)
+    )
+    client.post(
+        "/add",
+        json={"amount": 500, "category": "transport"},
+        headers=auth_headers(token),
+    )
 
     response = client.get("/list", headers=auth_headers(token))
     assert response.status_code == 200
@@ -115,7 +115,9 @@ def test_list_only_own_transactions():
     token1 = register_and_login("user1@test.com", "pass1")
     token2 = register_and_login("user2@test.com", "pass2")
 
-    client.post("/add", json={"amount": 1000, "category": "food"}, headers=auth_headers(token1))
+    client.post(
+        "/add", json={"amount": 1000, "category": "food"}, headers=auth_headers(token1)
+    )
 
     response = client.get("/list", headers=auth_headers(token2))
     assert len(response.json()) == 0
@@ -123,7 +125,9 @@ def test_list_only_own_transactions():
 
 def test_delete_transaction():
     token = register_and_login()
-    add = client.post("/add", json={"amount":1000, "category": "food"}, headers=auth_headers(token))
+    add = client.post(
+        "/add", json={"amount": 1000, "category": "food"}, headers=auth_headers(token)
+    )
     transaction_id = add.json()["id"]
 
     response = client.delete(f"/delete/{transaction_id}", headers=auth_headers(token))
@@ -134,7 +138,9 @@ def test_delete_someone_else_transaction():
     token1 = register_and_login("user1@test.com", "pass1")
     token2 = register_and_login("user2@test.com", "pass2")
 
-    add = client.post("/add", json={"amount": 1000, "category": "food"}, headers=auth_headers(token1))
+    add = client.post(
+        "/add", json={"amount": 1000, "category": "food"}, headers=auth_headers(token1)
+    )
     transaction_id = add.json()["id"]
 
     response = client.delete(f"/delete/{transaction_id}", headers=auth_headers(token2))

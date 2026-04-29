@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr
 
 # --- User ---
 
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -16,11 +17,13 @@ class UserResponse(BaseModel):
 
 # --- Transaction ---
 
+
 class TransactionCreate(BaseModel):
     amount: float
     category: str
 
     model_config = {"from_attributes": True}
+
 
 class TransactionResponse(BaseModel):
     id: int

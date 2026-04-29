@@ -10,7 +10,7 @@ from auth import (
     verify_password,
     create_access_token,
     get_current_user,
-    get_db
+    get_db,
 )
 import os
 
@@ -18,8 +18,6 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 app = FastAPI()
-
-
 
 
 @app.get("/")
@@ -34,12 +32,11 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with same email already exist"
+            detail="User with same email already exist",
         )
 
     new_user = User(
-        email=user_data.email,
-        hashed_password = hash_password(user_data.password)
+        email=user_data.email, hashed_password=hash_password(user_data.password)
     )
     db.add(new_user)
     db.commit()
@@ -49,14 +46,12 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @app.post("/login")
 def login(
-        form_data: OAuth2PasswordRequestForm = Depends(),
-        db: Session = Depends(get_db)
+    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Invalid email or password'
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
         )
 
     token = create_access_token(data={"sub": user.email})
@@ -65,17 +60,18 @@ def login(
 
 # --- Transactions (secured endpoints) ---
 
+
 @app.post("/add", response_model=TransactionResponse)
 def add_transaction(
-        transaction_data: TransactionCreate,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
-        ):
+    transaction_data: TransactionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
 
     transaction = Transaction(
-        amount = transaction_data.amount,
-        category = transaction_data.category,
-        user_id = current_user.id
+        amount=transaction_data.amount,
+        category=transaction_data.category,
+        user_id=current_user.id,
     )
     db.add(transaction)
     db.commit()
@@ -85,56 +81,54 @@ def add_transaction(
 
 @app.get("/list", response_model=list[TransactionResponse])
 def get_transactions(
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     transactions = (
-        db.query(Transaction)
-        .filter(Transaction.user_id == current_user.id)
-        .all()
+        db.query(Transaction).filter(Transaction.user_id == current_user.id).all()
     )
     return transactions
 
 
 @app.delete("/delete/{transaction_id}")
 def delete_transaction(
-        transaction_id: int,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
 
-    transaction = (db.query(Transaction)
-                   .filter(Transaction.id == transaction_id,
-                           Transaction.user_id == current_user.id)
-                   .first())
-    if not transaction:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Transaction not found"
-        )
-    db.delete(transaction)
-    db.commit()
-    return {"message": f"Transaction {transaction_id} deleted"}
-
-@app.put("/update/{transaction_id}", response_model=TransactionResponse)
-def update_transaction(
-        transaction_id: int,
-        transaction_data: TransactionCreate,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
-    ):
     transaction = (
         db.query(Transaction)
         .filter(
-            Transaction.id == transaction_id,
-            Transaction.user_id == current_user.id
+            Transaction.id == transaction_id, Transaction.user_id == current_user.id
         )
         .first()
     )
     if not transaction:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail='Transaction not found'
+            status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found"
+        )
+    db.delete(transaction)
+    db.commit()
+    return {"message": f"Transaction {transaction_id} deleted"}
+
+
+@app.put("/update/{transaction_id}", response_model=TransactionResponse)
+def update_transaction(
+    transaction_id: int,
+    transaction_data: TransactionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    transaction = (
+        db.query(Transaction)
+        .filter(
+            Transaction.id == transaction_id, Transaction.user_id == current_user.id
+        )
+        .first()
+    )
+    if not transaction:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found"
         )
     transaction.amount = transaction_data.amount
     transaction.category = transaction_data.category

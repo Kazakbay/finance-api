@@ -9,6 +9,7 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -27,7 +28,7 @@ class Transaction(Base):
     category = Column(String)
     user_id = Column(Integer, ForeignKey("users.id"))
 
-    owner = relationship("User", back_populates='transactions')
+    owner = relationship("User", back_populates="transactions")
 
 
 Base.metadata.create_all(bind=engine)
