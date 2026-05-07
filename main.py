@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from database import Transaction, User
-from schemas import UserCreate, UserResponse, TransactionCreate, TransactionResponse
+from schemas import UserCreate, UserResponse, TransactionCreate, TransactionResponse, PaginatedTransactions
 from dotenv import load_dotenv
 from auth import (
     hash_password,
@@ -79,15 +79,29 @@ def add_transaction(
     return transaction
 
 
-@app.get("/list", response_model=list[TransactionResponse])
+@app.get("/list", response_model=PaginatedTransactions)
 def get_transactions(
-    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+        page: int = 1,
+        limit: int = 10,
+        category: str = None,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
-    transactions = (
-        db.query(Transaction).filter(Transaction.user_id == current_user.id).all()
-    )
-    return transactions
+    query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
 
+    if category:
+        query = query.filter(Transaction.category == category)
+
+    total = query.count()
+    offset = (page - 1) * limit
+    transactions = query.offset(offset).limit(limit).all()
+
+    return {
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "transactions": transactions,
+    }
 
 @app.delete("/delete/{transaction_id}")
 def delete_transaction(

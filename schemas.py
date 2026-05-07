@@ -31,3 +31,10 @@ class TransactionResponse(BaseModel):
     category: str
 
     model_config = {"from_attributes": True}
+
+
+class PaginatedTransactions(BaseModel):
+    total: int
+    page: int
+    limit: int
+    transactions: list[TransactionResponse]

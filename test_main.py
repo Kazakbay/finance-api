@@ -108,7 +108,8 @@ def test_list_transactions():
 
     response = client.get("/list", headers=auth_headers(token))
     assert response.status_code == 200
-    assert len(response.json()) == 2
+    assert response.json()["total"] == 2
+    assert len(response.json()["transactions"]) == 2
 
 
 def test_list_only_own_transactions():
@@ -120,7 +121,8 @@ def test_list_only_own_transactions():
     )
 
     response = client.get("/list", headers=auth_headers(token2))
-    assert len(response.json()) == 0
+    assert response.json()["total"] == 0
+    assert len(response.json()["transactions"]) == 0
 
 
 def test_delete_transaction():
@@ -145,3 +147,28 @@ def test_delete_someone_else_transaction():
 
     response = client.delete(f"/delete/{transaction_id}", headers=auth_headers(token2))
     assert response.status_code == 404
+
+
+def test_list_pagination():
+    token = register_and_login()
+    for i in range(15):
+        client.post("/add", json={"amount": i * 100, "category": "food"}, headers=auth_headers(token))
+
+    response = client.get("/list?page=1&limit=10", headers=auth_headers(token))
+    assert len(response.json()["transactions"]) == 10
+    assert response.json()["total"] == 15
+
+    response = client.get("/list?page=2&limit=10", headers=auth_headers(token))
+    assert len(response.json()["transactions"]) == 5
+
+
+def test_list_filter_by_category():
+    token = register_and_login()
+    client.post("/add", json={"amount": 1000, "category": "food"}, headers=auth_headers(token))
+    client.post("/add", json={"amount": 500, "category": "transport"}, headers=auth_headers(token))
+    client.post("/add", json={"amount": 200, "category": "food"}, headers=auth_headers(token))
+
+    response = client.get("/list?category=food", headers=auth_headers(token))
+    assert response.json()["total"] == 2
+    assert all(t["category"] == "food" for t in response.json()["transactions"])
+
